@@ -33,16 +33,13 @@ class NewtestTests(TestCase):
             print "NO error with annotations,case and when"
     def test_annotation_with_annotated_field(self):
         try:
-        	pdb.set_trace()
-        	#print "entering main case"
+        	#pdb.set_trace()
         	query=Table.objects.annotate(other=Case(
             	When(value=11,then=Value(1)),
             	When(value=10,then=Value(2)),
             	output_field=IntegerField()
             	),
             	).order_by('other').values('id')
-        	#print "asked to print"
-        	#print query[0],query[1]
         except AttributeError:
         	print "annotation with annotated field in orderby not working"
         else:
@@ -59,7 +56,4 @@ class NewtestTests(TestCase):
 
 
 
-"""progress1:basically the annotate value is being displayed on printing the entire dict but if specifically asking for that value using .field giving an error..focus on 2nd last test..basically the field is being created using annotate but cannot be accessed directly"""
-"""progress2:all things work fine if an inbuilt function like Count used for the annotation(except q[0].value returns no value in dict error which is solved by double nested [][].)The problem is in the custom case when and then"""
-"""Progress 3:WOrks if id and other both given in values field..basically if other also present in value field"""
-"""Progress4:The final error has been cut down to use of When and Then.When used with Count and all there is no error"""
+
