@@ -6,7 +6,7 @@ from copy import deepcopy
 
 from django.core.exceptions import FieldError
 from django.db import DatabaseError, connection, models, transaction
-from django.db.models import TimeField, UUIDField
+from django.db.models import TimeField, UUIDField, IntegerField
 from django.db.models.aggregates import (
     Avg, Count, Max, Min, StdDev, Sum, Variance,
 )
@@ -883,3 +883,37 @@ class ReprTests(TestCase):
         self.assertEqual(repr(StdDev('a')), "StdDev(F(a), sample=False)")
         self.assertEqual(repr(Sum('a')), "Sum(F(a))")
         self.assertEqual(repr(Variance('a', sample=True)), "Variance(F(a), sample=True)")
+
+class Annotation_with_orderby_and_valuesTests(TestCase):
+    def setUp(self):
+        Employee.objects.create(firstname="name1",lastname="lastname1",salary="10")
+        Employee.objects.create(firstname="name2",lastname="lastname2",salary="30")
+        Employee.objects.create(firstname="name3",lastname="lastname3",salary="20")
+    """checking if it works with annotated field not included in the order_by"""
+    def test_annotation_without_annotated_field(self):
+        a=Employee.objects.annotate(
+                discount=Case(
+                    When(salary=10,then=Value(5)),
+                    When(salary=20,then=Value(10)),
+                    When(salary=30,then=Value(15)),
+                    default=Value(0),
+                    output_field=IntegerField()
+                    ),
+                ).order_by('id').values('id')
+        #print (a)
+        self.assertEqual(str(a),str([{u'id': 1}, {u'id': 2}, {u'id': 3}]))
+    """checking if it works with annotated field included in the order_by"""
+    def test_annotation_with_annotated_field(self):
+        query=Employee.objects.annotate(other=Case(
+            When(salary=10,then=Value(5)),
+            When(salary=30,then=Value(15)),
+            output_field=IntegerField()
+            ),
+            ).order_by('other').values('id')
+        #print (query)
+        self.assertEqual(str((query)),str([{u'id': 3}, {u'id': 1}, {u'id': 2}]))
+    """checking if it works with inbuilt aggregation functions like Count"""
+    def test_annotation_without_Case(self):
+        query=Employee.objects.annotate(other=Count('salary')).order_by('other').values('id')
+        #print (query)
+        self.assertEqual(str((query)),str([{u'id': 1}, {u'id': 2}, {u'id': 3}]))
