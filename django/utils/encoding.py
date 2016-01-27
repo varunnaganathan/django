@@ -209,6 +209,18 @@ def uri_to_iri(uri):
     if uri is None:
         return uri
     uri = force_bytes(uri)
+    bits=uri.split('%')
+    uritemp=""
+    if len(bits) != 1:
+        res=[bits[0]]
+        for item in range(1,len(bits)):
+            if bits[item][:2]  == "25":
+                bits[item]=bits[item][2:]
+    for i in bits:
+        uritemp+=str(i)
+        uritemp+='%'
+    uritemp=uritemp[:-1]
+    uri=uritemp
     iri = unquote_to_bytes(uri) if six.PY3 else unquote(uri)
     return repercent_broken_unicode(iri).decode('utf-8')
 
