@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import codecs
 import datetime
 import locale
+import re
 from decimal import Decimal
 
 from django.utils import six
@@ -196,6 +197,43 @@ def iri_to_uri(iri):
     return quote(force_bytes(iri), safe=b"/#%[]=:;$&()+,!?*@'~")
 
 
+def convert_encodings(uri):
+    """Convert the %encodings back to their octet except the encoding for the '%' sign"""
+    _hexdig = '0123456789ABCDEFabcdef'
+    _hextochr = dict((a + b, chr(int(a + b, 16)))
+                 for a in _hexdig for b in _hexdig)
+    _asciire = re.compile('([\x00-\x7f]+)')
+
+    if isinstance(uri, unicode):
+        if '%' not in uri:
+            return uri
+        parts = _asciire.split(uri)
+        ans = [parts[0]]
+        for i in range(1, len(parts), 2):
+            if str(parts[i][1:3]) != "25":
+                ans.append(unquote(str(parts[i])).decode('latin1'))
+                ans.append(parts[i + 1])
+            else:
+                ans.append("%")
+                ans.append(parts[i][1:3])
+        return ''.join(ans)
+    else:
+        parts = uri.split('%')
+        ans = [parts[0]]
+        for i in parts[1:]:
+            try:
+                if i[:2] != "25":
+                    ans.append(_hextochr[i[:2]])
+                    ans.append(i[2:])
+                else:
+                    ans.append('%')
+                    ans.append(i)
+            except KeyError:
+                ans.append('%')
+                ans.append(i)
+        return ''.join(ans)
+
+
 def uri_to_iri(uri):
     """
     Converts a Uniform Resource Identifier(URI) into an Internationalized
@@ -208,20 +246,9 @@ def uri_to_iri(uri):
     """
     if uri is None:
         return uri
-    uri = force_bytes(uri)
-    bits=uri.split('%')
-    uritemp=""
-    if len(bits) != 1:
-        res=[bits[0]]
-        for item in range(1,len(bits)):
-            if bits[item][:2]  == "25":
-                bits[item]=bits[item][2:]
-    for i in bits:
-        uritemp+=str(i)
-        uritemp+='%'
-    uritemp=uritemp[:-1]
-    uri=uritemp
-    iri = unquote_to_bytes(uri) if six.PY3 else unquote(uri)
+   # uri = force_bytes(uri)
+    #iri = unquote_to_bytes(uri) if six.PY3 else unquote(uri)
+    iri = convert_encodings(uri)
     return repercent_broken_unicode(iri).decode('utf-8')
 
 
